@@ -1,9 +1,5 @@
-#include <assimp/cimport.h>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
 
-#include <OpenGL/gl.h>
-#include <OpenGL/glu.h>
+
 #include <GLFW/glfw3.h>
 
 #include <imgui.h>
@@ -127,6 +123,9 @@ int main(int argc, char **argv)
     }
 
     glfwMakeContextCurrent(window);
+
+    Model_File_Data *data = load_model_file(argv[1], 0);
+    free_model_file(data);
 
 	ImGui_ImplGlfw_Init(window, true);
 
