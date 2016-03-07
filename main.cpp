@@ -140,6 +140,9 @@ int main(int argc, char **argv)
     {
 		ImGui_ImplGlfw_NewFrame();
 
+		static float time_scale = 1.0f;
+		ImGui::SliderFloat("Time scale", &time_scale, 0.0f, 5.0f);
+
 		ImGui::Begin("Scene");
 		gui_nodes(scene->mRootNode);
 		ImGui::End();
@@ -175,7 +178,6 @@ int main(int argc, char **argv)
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-
 		draw_node(scene, scene->mRootNode);
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -185,7 +187,7 @@ int main(int argc, char **argv)
         glfwSwapBuffers(window);
         glfwPollEvents();
 
-		g_time += 0.016f;
+		g_time += 0.016f * time_scale;
     }
 
 	ImGui_ImplGlfw_Shutdown();
