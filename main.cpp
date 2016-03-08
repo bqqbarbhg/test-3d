@@ -25,6 +25,7 @@ int main(int argc, char **argv)
 	Vec3 *temp_transform_buffer = (Vec3*)malloc(sizeof(Vec3) * 1024 * 32);
 
 	Mat44 *world_transform = (Mat44*)malloc(sizeof(Mat44) * model->node_count);
+	Mat44 *bone_transform = (Mat44*)malloc(sizeof(Mat44) * 256);
 
 	while (!glfwWindowShouldClose(window)) {
 		double time = glfwGetTime();
@@ -42,8 +43,10 @@ int main(int argc, char **argv)
 				world_transform[i] = node->transform;
 			}
 
-			if (!strcmp(node->name, "Cube")) {
-				world_transform[i] = world_transform[i] * mat44_rotate_x(sinf((float)time));
+			if (!strcmp(node->name, "Bone.001")) {
+				world_transform[i] = mat44_rotate_x(-sinf((float)time)) * world_transform[i];
+			} else if (!strcmp(node->name, "Bone.002")) {
+				world_transform[i] = mat44_rotate_x(sinf((float)time)) * world_transform[i];
 			}
 		}
 
@@ -73,9 +76,37 @@ int main(int argc, char **argv)
 			for (U32 meshI = 0; meshI < mesh_count; meshI++) {
 				Mesh *mesh = node->meshes[meshI];
 
+				U32 bone_count = mesh->bone_count;
+				for (U32 boneI = 0; boneI < bone_count; boneI++) {
+					Bone *bone = &mesh->bones[boneI];
+					Mat44 *bonetrans = 0;
+
+					for (U32 i = 0; i < node_count; i++) {
+						if (!strcmp(bone->name, model->nodes[i].name)) {
+							bonetrans = &world_transform[i];
+							break;
+						}
+					}
+
+					assert(bonetrans);
+
+					bone_transform[boneI] = bone->inv_bind_pose_transform * *bonetrans;
+				}
+
 				U32 vertex_count = mesh->vertex_count;
-				for (U32 i = 0; i < vertex_count; i++) {
-					temp_transform_buffer[i] = mesh->positions[i] * transform;
+				U32 bones_per_vertex = mesh->bones_per_vertex;
+				for (U32 vertexI = 0; vertexI < vertex_count; vertexI++) {
+					U8 *bone_indices = &mesh->bone_indices[vertexI * bones_per_vertex];
+					float *bone_weights = &mesh->bone_weights[vertexI * bones_per_vertex];
+
+					Vec3 vertex = mesh->positions[vertexI];
+					Vec3 result = vec3_zero;
+
+					for (U32 i = 0; i < bones_per_vertex; i++) {
+						result += (vertex * bone_transform[bone_indices[i]]) * bone_weights[i];
+					}
+
+					temp_transform_buffer[vertexI] = result;
 				}
 
 				glBegin(GL_TRIANGLES);
