@@ -1,21 +1,22 @@
 
-struct Mat44
-{
-};
-
-struct Vec2
-{
-	float x, y;
-};
-
-struct Vec3
-{
-	float x, y, z;
-};
-
 // TODO: Remove these
 typedef unsigned int U32;
+typedef unsigned short U16;
 typedef unsigned char U8;
+
+#define MAX_TEXCOORD_STREAMS 4
+
+struct Node
+{
+	const char *name;
+
+	Node *parent;
+
+	Node **children;
+	U32 child_count;
+
+	Mat44 transform;
+};
 
 struct Bone
 {
@@ -29,12 +30,18 @@ struct Mesh
 
 	Vec3 *positions;
 	Vec3 *normals;
-	Vec2 *texcoords;
+	float *texcoords[MAX_TEXCOORD_STREAMS];
+	U32 texcoord_components[MAX_TEXCOORD_STREAMS];
 	U32 vertex_count;
+
+	U32 texcoord_stream_count;
 
 	U8 *bone_indices;
 	float *bone_weights;
 	U32 bones_per_vertex;
+
+	U16 *indices;
+	U32 index_count;
 
 	Bone *bones;
 	U32 bone_count;
@@ -45,6 +52,11 @@ struct Model_File_Data
 	void *allocation;
 	Mesh *meshes;
 	U32 mesh_count;
+
+	Node *nodes;
+	U32 node_count;
+
+	Node *root_node;
 };
 
 typedef void (*model_progress_callback)(float);

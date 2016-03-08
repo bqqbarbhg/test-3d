@@ -96,12 +96,12 @@ void draw_node(const aiScene *scene, const aiNode *node, const aiMatrix4x4& pare
 	}
 }
 
-void gui_nodes(const aiNode *node)
+void gui_nodes(const Node *node)
 {
-	if (ImGui::TreeNode(node, "%s", node->mName.data)) {
+	if (ImGui::TreeNode(node, "%s", node->name)) {
 
-		for (unsigned i = 0; i < node->mNumChildren; i++) {
-			gui_nodes(node->mChildren[i]);
+		for (unsigned i = 0; i < node->child_count; i++) {
+			gui_nodes(node->children[i]);
 		}
 
 		ImGui::TreePop();
@@ -125,7 +125,6 @@ int main(int argc, char **argv)
     glfwMakeContextCurrent(window);
 
     Model_File_Data *data = load_model_file(argv[1], 0);
-    free_model_file(data);
 
 	ImGui_ImplGlfw_Init(window, true);
 
@@ -143,7 +142,7 @@ int main(int argc, char **argv)
 		ImGui::SliderFloat("Time scale", &time_scale, 0.0f, 5.0f);
 
 		ImGui::Begin("Scene");
-		gui_nodes(scene->mRootNode);
+		gui_nodes(data->root_node);
 		ImGui::End();
 
 		aiMatrix4x4 rotation;
