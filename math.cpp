@@ -1,3 +1,4 @@
+#include <math.h>
 
 struct Mat44
 {
@@ -216,17 +217,17 @@ Mat44 mat44_lookat(const Vec3& eye, const Vec3& target, const Vec3& up)
 	return mat44_axes(forward, right, new_up, eye);
 }
 
-Mat44 mat44_perspective(float fov, float aspect, float near, float far)
+Mat44 mat44_perspective(float fov, float aspect, float near_z, float far_z)
 {
 	Mat44 ret = mat44_zero;
 
 	float tan = tanf(fov / 2.0f);
-	float len = far - near;
+	float len = far_z - near_z;
 
 	ret._11 = 1.0f / (aspect * tan);
 	ret._22 = 1.0f / (tan);
-	ret._33 = -(far + near) / len;
-	ret._34 = -(2 * far * near) / len;
+	ret._33 = -(far_z + near_z) / len;
+	ret._34 = -(2 * far_z * near_z) / len;
 	ret._43 = -1.0f;
 
 	return ret;
@@ -236,27 +237,33 @@ Mat44 operator*(const Mat44& a, const Mat44& b)
 {
 	Mat44 ret;
 
-	ret._11 = a._11*b._11 + a._21*b._12 + a._31*b._13 + a._41+b._14;
-	ret._12 = a._12*b._11 + a._22*b._12 + a._32*b._13 + a._42+b._14;
-	ret._13 = a._13*b._11 + a._23*b._12 + a._33*b._13 + a._43+b._14;
-	ret._14 = a._14*b._11 + a._24*b._12 + a._34*b._13 + a._44+b._14;
+	ret._11 = a._11*b._11 + a._21*b._12 + a._31*b._13 + a._41*b._14;
+	ret._12 = a._12*b._11 + a._22*b._12 + a._32*b._13 + a._42*b._14;
+	ret._13 = a._13*b._11 + a._23*b._12 + a._33*b._13 + a._43*b._14;
+	ret._14 = a._14*b._11 + a._24*b._12 + a._34*b._13 + a._44*b._14;
 
-	ret._21 = a._11*b._21 + a._21*b._22 + a._31*b._23 + a._41+b._24;
-	ret._22 = a._12*b._21 + a._22*b._22 + a._32*b._23 + a._42+b._24;
-	ret._23 = a._13*b._21 + a._23*b._22 + a._33*b._23 + a._43+b._24;
-	ret._24 = a._14*b._21 + a._24*b._22 + a._34*b._23 + a._44+b._24;
+	ret._21 = a._11*b._21 + a._21*b._22 + a._31*b._23 + a._41*b._24;
+	ret._22 = a._12*b._21 + a._22*b._22 + a._32*b._23 + a._42*b._24;
+	ret._23 = a._13*b._21 + a._23*b._22 + a._33*b._23 + a._43*b._24;
+	ret._24 = a._14*b._21 + a._24*b._22 + a._34*b._23 + a._44*b._24;
 
-	ret._31 = a._11*b._31 + a._21*b._32 + a._31*b._33 + a._41+b._34;
-	ret._32 = a._12*b._31 + a._22*b._32 + a._32*b._33 + a._42+b._34;
-	ret._33 = a._13*b._31 + a._23*b._32 + a._33*b._33 + a._43+b._34;
-	ret._34 = a._14*b._31 + a._24*b._32 + a._34*b._33 + a._44+b._34;
+	ret._31 = a._11*b._31 + a._21*b._32 + a._31*b._33 + a._41*b._34;
+	ret._32 = a._12*b._31 + a._22*b._32 + a._32*b._33 + a._42*b._34;
+	ret._33 = a._13*b._31 + a._23*b._32 + a._33*b._33 + a._43*b._34;
+	ret._34 = a._14*b._31 + a._24*b._32 + a._34*b._33 + a._44*b._34;
 
-	ret._41 = a._11*b._41 + a._21*b._42 + a._31*b._43 + a._41+b._44;
-	ret._42 = a._12*b._41 + a._22*b._42 + a._32*b._43 + a._42+b._44;
-	ret._43 = a._13*b._41 + a._23*b._42 + a._33*b._43 + a._43+b._44;
-	ret._44 = a._14*b._41 + a._24*b._42 + a._34*b._43 + a._44+b._44;
+	ret._41 = a._11*b._41 + a._21*b._42 + a._31*b._43 + a._41*b._44;
+	ret._42 = a._12*b._41 + a._22*b._42 + a._32*b._43 + a._42*b._44;
+	ret._43 = a._13*b._41 + a._23*b._42 + a._33*b._43 + a._43*b._44;
+	ret._44 = a._14*b._41 + a._24*b._42 + a._34*b._43 + a._44*b._44;
 
 	return ret;
+}
+
+Mat44& operator*=(Mat44& a, const Mat44& b)
+{
+	a = a * b;
+	return a;
 }
 
 Vec3 operator*(const Vec3& vec, const Mat44& mat)
@@ -264,8 +271,8 @@ Vec3 operator*(const Vec3& vec, const Mat44& mat)
 	Vec3 ret;
 
 	ret.x = vec.x*mat._11 + vec.y*mat._12 + vec.z*mat._13 + mat._14;
-	ret.y = vec.y*mat._21 + vec.y*mat._22 + vec.z*mat._23 + mat._24;
-	ret.z = vec.z*mat._31 + vec.y*mat._32 + vec.z*mat._33 + mat._34;
+	ret.y = vec.x*mat._21 + vec.y*mat._22 + vec.z*mat._23 + mat._24;
+	ret.z = vec.x*mat._31 + vec.y*mat._32 + vec.z*mat._33 + mat._34;
 
 	return ret;
 }

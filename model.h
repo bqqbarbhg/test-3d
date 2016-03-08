@@ -6,18 +6,6 @@ typedef unsigned char U8;
 
 #define MAX_TEXCOORD_STREAMS 4
 
-struct Node
-{
-	const char *name;
-
-	Node *parent;
-
-	Node **children;
-	U32 child_count;
-
-	Mat44 transform;
-};
-
 struct Bone
 {
 	const char *name;
@@ -45,6 +33,21 @@ struct Mesh
 
 	Bone *bones;
 	U32 bone_count;
+};
+
+struct Node
+{
+	const char *name;
+
+	Node *parent;
+
+	Node **children;
+	U32 child_count;
+
+	Mesh **meshes;
+	U32 mesh_count;
+
+	Mat44 transform;
 };
 
 struct Model_File_Data

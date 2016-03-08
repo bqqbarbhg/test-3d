@@ -33,8 +33,16 @@ struct Temp_Allocator
 Temp_Allocation *temp_allocator_add(Temp_Allocator *allocator, void **pointer,
 		size_t size, size_t alignment)
 {
+	if (size == 0) {
+		*pointer = 0;
+		return 0;
+	}
+
 	Temp_Allocation *a = TEMP_ALLOC_TEMP(allocator, Temp_Allocation, 1);
-	if (!a) return 0;
+	if (!a) {
+		*pointer = 0;
+		return 0;
+	}
 
 	a->pointer = pointer;
 	a->size = size;
@@ -142,7 +150,7 @@ void *temp_allocator_finalize(Temp_Allocator *allocator)
 Temp_Pointer *temp_allocator_pointer_set(Temp_Allocator *allocator, void **pointer, void *target_ptr)
 {
 	Temp_Allocation *parent = 0, *target = 0;
-	ptrdiff_t parent_offset, target_offset;
+	ptrdiff_t parent_offset = 0, target_offset = 0;
 
 	*pointer = target_ptr;
 

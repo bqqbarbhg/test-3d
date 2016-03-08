@@ -68,6 +68,14 @@ static Node* create_nodes_recursive(Temp_Allocator *t, Model_File_Data *data, ai
 	U32 child_count = ai_node->mNumChildren;
 	node->child_count = child_count;
 
+	U32 mesh_count = ai_node->mNumMeshes;
+	node->mesh_count = mesh_count;
+
+	TEMP_ALLOC_N(t, node->meshes, mesh_count);
+	for (U32 meshI = 0; meshI < mesh_count; meshI++) {
+		TEMP_POINTER_SET(t, node->meshes[meshI], &data->meshes[meshI]);
+	}
+
 	TEMP_ALLOC_N(t, node->children, child_count);
 
 	for (U32 i = 0; i < child_count; i++) {
