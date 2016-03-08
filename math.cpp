@@ -268,6 +268,62 @@ Mat44 operator*(const Mat44& a, const Mat44& b)
 	return ret;
 }
 
+float determinant(const Mat44& a)
+{
+	return 
+		+ a._11*a._22*a._33*a._44 + a._11*a._23*a._34*a._42 + a._11*a._24*a._32*a._43
+		+ a._12*a._21*a._34*a._43 + a._12*a._23*a._31*a._44 + a._12*a._24*a._33*a._41
+		+ a._13*a._21*a._32*a._44 + a._13*a._22*a._34*a._41 + a._13*a._24*a._31*a._42
+		+ a._14*a._21*a._33*a._42 + a._14*a._22*a._31*a._43 + a._14*a._23*a._32*a._41
+		- a._11*a._22*a._34*a._43 - a._11*a._23*a._32*a._44 - a._11*a._24*a._33*a._42
+		- a._12*a._21*a._33*a._44 - a._11*a._23*a._34*a._41 - a._12*a._24*a._31*a._43
+		- a._13*a._21*a._34*a._42 - a._13*a._22*a._31*a._44 - a._13*a._24*a._32*a._41
+		- a._14*a._21*a._32*a._43 - a._14*a._22*a._33*a._41 - a._14*a._23*a._31*a._42;
+}
+
+Mat44 inverse(const Mat44& mat)
+{
+	Mat44 ret;
+
+#define MATH_MAT44INVERSE_DET3(a,b,c,d,e,f,g,h,i) \
+	(mat._##a*mat._##e*mat._##i + mat._##b*mat._##f*mat._##g + mat._##c*mat._##d*mat._##h \
+	 - mat._##a*mat._##f*mat._##h - mat._##b*mat._##d*mat._##i - mat._##c*mat._##e*mat._##g)
+
+	ret._11 = + MATH_MAT44INVERSE_DET3(22, 23, 24, 32, 33, 34, 42, 43, 44);
+	ret._21 = - MATH_MAT44INVERSE_DET3(23, 24, 21, 33, 34, 31, 43, 44, 41);
+	ret._31 = + MATH_MAT44INVERSE_DET3(24, 21, 22, 34, 31, 32, 44, 41, 42);
+	ret._41 = - MATH_MAT44INVERSE_DET3(21, 22, 23, 31, 32, 33, 41, 42, 43);
+
+	ret._12 = - MATH_MAT44INVERSE_DET3(32, 33, 34, 42, 43, 44, 12, 13, 14);
+	ret._22 = + MATH_MAT44INVERSE_DET3(33, 34, 31, 43, 44, 41, 13, 14, 11);
+	ret._32 = - MATH_MAT44INVERSE_DET3(34, 31, 32, 44, 41, 42, 14, 11, 12);
+	ret._42 = + MATH_MAT44INVERSE_DET3(31, 32, 33, 41, 42, 43, 11, 12, 13);
+
+	ret._13 = + MATH_MAT44INVERSE_DET3(42, 43, 44, 12, 13, 14, 22, 23, 24);
+	ret._23 = - MATH_MAT44INVERSE_DET3(43, 44, 41, 13, 14, 11, 23, 24, 21);
+	ret._33 = + MATH_MAT44INVERSE_DET3(44, 41, 42, 14, 11, 12, 24, 21, 22);
+	ret._43 = - MATH_MAT44INVERSE_DET3(41, 42, 43, 11, 12, 13, 21, 22, 23);
+
+	ret._14 = - MATH_MAT44INVERSE_DET3(12, 13, 14, 22, 23, 24, 32, 33, 34);
+	ret._24 = + MATH_MAT44INVERSE_DET3(13, 14, 11, 23, 24, 21, 33, 34, 31);
+	ret._34 = - MATH_MAT44INVERSE_DET3(14, 11, 12, 24, 21, 22, 34, 31, 32);
+	ret._44 = + MATH_MAT44INVERSE_DET3(11, 12, 13, 21, 22, 23, 31, 32, 33);
+
+#undef MATH_MAT44INVERSE_DET3
+
+	float det = mat._11*ret._11 + mat._12*ret._21 + mat._13*ret._31 + mat._14*ret._41;
+	assert(fabs(det) > 0.0f);
+
+	float idet = 1.0f / det;
+
+	ret._11 *= idet; ret._12 *= idet; ret._13 *= idet; ret._14 *= idet;
+	ret._21 *= idet; ret._22 *= idet; ret._23 *= idet; ret._24 *= idet;
+	ret._31 *= idet; ret._32 *= idet; ret._33 *= idet; ret._34 *= idet;
+	ret._41 *= idet; ret._42 *= idet; ret._43 *= idet; ret._44 *= idet;
+
+	return ret;
+}
+
 Mat44& operator*=(Mat44& a, const Mat44& b)
 {
 	a = a * b;

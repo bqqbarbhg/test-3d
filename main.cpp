@@ -34,6 +34,8 @@ int main(int argc, char **argv)
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
+		Mat44 mat = mat44_rotate_x(sinf((float)time));
+
 		for (U32 i = 0; i < model->node_count; i++) {
 			Node *node = &model->nodes[i];
 
@@ -44,9 +46,9 @@ int main(int argc, char **argv)
 			}
 
 			if (!strcmp(node->name, "Bone.001")) {
-				world_transform[i] = mat44_rotate_x(-sinf((float)time)) * world_transform[i];
+				world_transform[i] = mat * world_transform[i];
 			} else if (!strcmp(node->name, "Bone.002")) {
-				world_transform[i] = mat44_rotate_x(sinf((float)time)) * world_transform[i];
+				world_transform[i] = inverse(mat) * world_transform[i];
 			}
 		}
 
