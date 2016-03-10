@@ -34,6 +34,7 @@ int main(int argc, char **argv)
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
+
 		Mat44 mat = mat44_rotate_x(sinf((float)time));
 
 		for (U32 i = 0; i < model->node_count; i++) {
@@ -60,13 +61,27 @@ int main(int argc, char **argv)
 		glClearColor(0x64/255.0f, 0x95/255.0f, 0xED/255.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
+		Mat44 proj = mat44_perspective(1.0f, (float)width / (float)height, 0.01f, 100.0f);
+		Mat44 projt = transpose(proj);
+
+		//time = 0.0f;
+		Mat44 view = mat44_lookat(vec3(sinf((float)time * 0.2f) * 10.0f, 10.0f, cosf((float)time * 0.2f) * 10.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
+
+		ImGui::Begin("View matrix");
+		ImGui::Text("%6.2f %6.2f %6.2f %6.2f", view._11, view._12, view._13, view._14);
+		ImGui::Text("%6.2f %6.2f %6.2f %6.2f", view._21, view._22, view._23, view._24);
+		ImGui::Text("%6.2f %6.2f %6.2f %6.2f", view._31, view._32, view._33, view._34);
+		ImGui::Text("%6.2f %6.2f %6.2f %6.2f", view._41, view._42, view._43, view._44);
+		ImGui::End();
+
+		Mat44 viewt = transpose(view);
+
 		// Temp matrix stuffs
 		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		gluPerspective(45.0f, (float)width / (float)height, 0.01f, 100.0f);
+		glLoadMatrixf(projt.data);
+
 		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-		gluLookAt(15.0f, 15.0f, 15.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+		glLoadMatrixf(viewt.data);
 
 		U32 node_count = model->node_count;
 		for (U32 nodeI = 0; nodeI < node_count; nodeI++) {

@@ -23,6 +23,26 @@ struct Vec3
 	float x, y, z;
 };
 
+Vec3 vec3(float x, float y, float z)
+{
+	Vec3 ret;
+	ret.x = x;
+	ret.y = y;
+	ret.z = z;
+	return ret;
+}
+
+Vec3 operator-(const Vec3& a)
+{
+	Vec3 ret;
+
+	ret.x = -a.x;
+	ret.y = -a.y;
+	ret.z = -a.z;
+
+	return ret;
+}
+
 Vec3 operator+(const Vec3& a, const Vec3& b)
 {
 	Vec3 ret;
@@ -194,23 +214,23 @@ Mat44 mat44_axes(const Vec3& forward, const Vec3& right, const Vec3& up, const V
 	Mat44 ret;
 
 	ret._11 = right.x;
-	ret._21 = right.y;
-	ret._31 = right.z;
-	ret._41 = 0.0f;
+	ret._12 = right.y;
+	ret._13 = right.z;
+	ret._14 = -dot(pos, right);
 
-	ret._12 = up.x;
+	ret._21 = up.x;
 	ret._22 = up.y;
-	ret._32 = up.z;
+	ret._23 = up.z;
+	ret._24 = -dot(pos, up);
+
+	ret._31 = -forward.x;
+	ret._32 = -forward.y;
+	ret._33 = -forward.z;
+	ret._34 = dot(pos, forward);
+
+	ret._41 = 0.0f;
 	ret._42 = 0.0f;
-
-	ret._13 = forward.x;
-	ret._23 = forward.y;
-	ret._33 = forward.z;
 	ret._43 = 0.0f;
-
-	ret._14 = pos.x;
-	ret._24 = pos.y;
-	ret._34 = pos.z;
 	ret._44 = 1.0f;
 
 	return ret;
@@ -220,7 +240,7 @@ Mat44 mat44_lookat(const Vec3& eye, const Vec3& target, const Vec3& up)
 {
 	Vec3 forward = normalize(target - eye);
 	Vec3 right = normalize(cross(forward, up));
-	Vec3 new_up = cross(forward, right);
+	Vec3 new_up = cross(right, forward);
 
 	return mat44_axes(forward, right, new_up, eye);
 }
@@ -264,6 +284,33 @@ Mat44 operator*(const Mat44& a, const Mat44& b)
 	ret._42 = a._12*b._41 + a._22*b._42 + a._32*b._43 + a._42*b._44;
 	ret._43 = a._13*b._41 + a._23*b._42 + a._33*b._43 + a._43*b._44;
 	ret._44 = a._14*b._41 + a._24*b._42 + a._34*b._43 + a._44*b._44;
+
+	return ret;
+}
+
+Mat44 transpose(const Mat44& a)
+{
+	Mat44 ret;
+
+	ret._11 = a._11;
+	ret._12 = a._21;
+	ret._13 = a._31;
+	ret._14 = a._41;
+
+	ret._21 = a._12;
+	ret._22 = a._22;
+	ret._23 = a._32;
+	ret._24 = a._42;
+
+	ret._31 = a._13;
+	ret._32 = a._23;
+	ret._33 = a._33;
+	ret._34 = a._43;
+
+	ret._41 = a._14;
+	ret._42 = a._24;
+	ret._43 = a._34;
+	ret._44 = a._44;
 
 	return ret;
 }
