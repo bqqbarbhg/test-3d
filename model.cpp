@@ -182,7 +182,7 @@ Model_File_Data *load_model_file(const char *file, const Model_File_Settings *se
 
 		TEMP_ALLOC_N(t, mesh->indices, index_count);
 
-		U16 *out_index = mesh->indices;
+		U32 *out_index = mesh->indices;
 		for (U32 faceI = 0; faceI < face_count; faceI++) {
 			aiFace ai_face = ai_mesh->mFaces[faceI];
 			assert(ai_face.mNumIndices == 3);
@@ -267,4 +267,81 @@ void free_model_file(Model_File_Data *data)
 {
 	free(data->allocation);
 }
+
+#if 0 
+void write_model_file(FILE *file, const Model_File_Data *data)
+{
+	// Persistent streams
+	Stream strs = stream_str();
+	Stream poss = stream_endian32();
+	Stream norms = stream_endian32();
+	Stream texs = stream_endian32();
+	Stream bone_indices = stream_byte();
+	Stream bone_weights = stream_endian32();
+
+	// Temporary streams
+	Stream sizes = stream_mixed();
+	Stream infos = stream_mixed();
+	Stream transforms = stream_endian32();
+
+	U32 mesh_count = data->mesh_count;
+	stream_write32(&infos, mesh_count);
+
+	U32 total_bone_count = 0;
+
+	for (U32 meshI = 0; meshI < mesh_count; meshI++) {
+		const Mesh *mesh = &data->meshes[meshI];
+
+		stream_write_str(&str_s, mesh->name);
+
+		U32 vertex_count = mesh->vertex_count;
+		stream_write32(&infos, vertex_count);
+
+		stream_write(&poss, mesh->positions, vertex_count * 3);
+		stream_write(&norms, mesh->normals, vertex_count * 3);
+
+		for (U32 streamI = 0; streamI < texcoord_stream_count; streamI++) {
+			U32 count = vertex_count * mesh->texcoord_components[streamI];
+			stream_write_e4(mesh->texcoords[streamI], count);
+		}
+
+		U32 bones_per_vertex = mesh->bones_per_vertex;
+		stream_write32(&infos, bones_per_vertex);
+
+		stream_write(mesh->bone_indices, vertex_count * bones_per_vertex);
+		stream_write(mesh->bone_weights, vertex_count * bones_per_vertex);
+
+		U32 index_count = mesh->index_count;
+		stream_write32(&infos, index_count);
+
+		U32 bone_count = mesh->bone_count;
+		stream_write32(&infos, bone_count);
+
+		for (U32 boneI = 0; boneI < bone_count; boneI++) {
+			const Bone *bone = &mesh->bones[boneI];
+			stream_write_str(&str_s, bone->name);
+			stream_write(transforms, &bone->inv_bind_pose_transform, 1);
+		}
+	}
+
+	U64 persistent_size = strs.size + poss.size + norms.size + texs.size + bone_indices.size + bone_weights.size;
+
+	stream_write64(&sizes, persistent_size);
+	stream_write64(&sizes, strs.size);
+	stream_write64(&sizes, poss.size);
+	stream_write64(&sizes, norms.size);
+	stream_write64(&sizes, texs.size);
+	stream_write64(&sizes, bone_indices.size);
+	stream_write64(&sizes, bone_weights.size);
+
+	stream_write32(&sizes, mesh_count);
+	stream_write32(&sizes, total_bone_count);
+
+	fwrite(sizes.data, 1, sizes.size, file);
+}
+
+void read_model_file(Data_Stream *stream, Model_File_Data *data)
+{
+}
+#endif
 

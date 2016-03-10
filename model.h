@@ -28,7 +28,7 @@ struct Mesh
 	float *bone_weights;
 	U32 bones_per_vertex;
 
-	U16 *indices;
+	U32 *indices;
 	U32 index_count;
 
 	Bone *bones;
