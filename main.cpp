@@ -32,20 +32,31 @@ int main(int argc, char **argv)
 	Vec3 camera_target = vec3(0.0f, 0.0f, 0.0f);
 
 	Vec2 prev_mouse_pos = vec2(0.0f, 0.0f);
+	Editor_Mouse_State prev_editor_mouse = { 0 };
+
+	static Editor_Widget test_widget = { 0 };
+	test_widget.axis_pick_distance = 1.0f;
+	editor_widget_set_mat44(&test_widget, mat44_identity);
 
 	while (!glfwWindowShouldClose(window)) {
 		double time = glfwGetTime();
 
+		int width, height;
+		glfwGetWindowSize(window, &width, &height);
+
+		Mat44 proj = mat44_perspective(1.0f, (float)width / (float)height, 0.01f, 100.0f);
+		Mat44 projt = transpose(proj);
+
 		ImGui_ImplGlfw_NewFrame();
 		debug_draw_reset();
+		editor_widget_reset(&test_widget);
+
+		double x, y;
+		glfwGetCursorPos(window, &x, &y);
+		Vec2 mouse_pos = vec2((float)x, (float)y);
+		Vec2 mouse_delta = mouse_pos - prev_mouse_pos;
 
 		if (!ImGui::GetIO().WantCaptureMouse) {
-
-			double x, y;
-			glfwGetCursorPos(window, &x, &y);
-			Vec2 mouse_pos = vec2((float)x, (float)y);
-			Vec2 mouse_delta = mouse_pos - prev_mouse_pos;
-
 			if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT)) {
 				yaw -= mouse_delta.x * 0.01f;
 				pitch -= mouse_delta.y * 0.01f;
@@ -56,9 +67,53 @@ int main(int argc, char **argv)
 				Vec3 up = normalize(cross(right, forward));
 				camera_target -= (mouse_delta.x * right + mouse_delta.y * up) * 0.01f;
 			}
-
-			prev_mouse_pos = mouse_pos;
 		}
+		prev_mouse_pos = mouse_pos;
+
+		if (pitch > 1.5f)
+			pitch = 1.5f;
+		if (pitch < -1.5f)
+			pitch = -1.5f;
+
+		Mat44 cam_mat = mat44_rotate_x(pitch) * mat44_rotate_y(yaw);
+		Vec3 camera = vec3(0.0f, 0.0f, 10.0f) * cam_mat;
+		Mat44 view = mat44_lookat(camera_target + camera, camera_target, vec3(0.0f, 1.0f, 0.0f));
+
+		Mat44 world_to_screen = view * proj;
+		Mat44 screen_to_world = inverse(world_to_screen);
+
+		float mouse_relx = mouse_pos.x / (float)width * 2.0f - 1.0f;
+		float mouse_rely = -(mouse_pos.y / (float)height * 2.0f - 1.0f);
+		Vec4 mouse_near = vec4(mouse_relx, mouse_rely, 0.0f, 1.0f) * screen_to_world;
+		Vec4 mouse_far = vec4(mouse_relx, mouse_rely, 1.0f, 1.0f) * screen_to_world;
+		mouse_near *= 1.0f / mouse_near.w;
+		mouse_far *= 1.0f / mouse_far.w;
+		Ray mouse_ray = ray_to_point(
+				vec3(mouse_near.x, mouse_near.y, mouse_near.z),
+				vec3(mouse_far.x, mouse_far.y, mouse_far.z));
+
+		Editor_Mouse_State editor_mouse;
+		editor_mouse.world_ray = mouse_ray;
+		editor_mouse.is_pressed = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) != GLFW_RELEASE;
+
+		if (!ImGui::GetIO().WantCaptureMouse) {
+			float dist = editor_widget_pick(&test_widget, editor_mouse);
+			if (dist >= 0.0f) {
+				test_widget.is_active = true;
+			}
+		}
+
+		if (test_widget.selected_part)
+			test_widget.is_active = true;
+
+		if (test_widget.is_active) {
+			Mat44 xform;
+			if (editor_widget_update(&test_widget, editor_mouse, prev_editor_mouse, &xform)) {
+				test_widget.position = test_widget.position * xform;
+			}
+		}
+
+		prev_editor_mouse = editor_mouse;
 
 		glColor3f(1.0f, 1.0f, 1.0f);
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -82,23 +137,15 @@ int main(int argc, char **argv)
 		}
 
 		// Clearing the viewport
-		int width, height;
-		glfwGetWindowSize(window, &width, &height);
 		glViewport(0, 0, width, height);
 		glClearColor(0x64/255.0f, 0x95/255.0f, 0xED/255.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		Mat44 proj = mat44_perspective(1.0f, (float)width / (float)height, 0.01f, 100.0f);
-		Mat44 projt = transpose(proj);
 
-		if (pitch > 1.5f)
-			pitch = 1.5f;
-		if (pitch < -1.5f)
-			pitch = -1.5f;
 
-		Mat44 cam_mat = mat44_rotate_x(pitch) * mat44_rotate_y(yaw);
-		Vec3 camera = vec3(0.0f, 0.0f, 10.0f) * cam_mat;
-		Mat44 view = mat44_lookat(camera_target + camera, camera_target, vec3(0.0f, 1.0f, 0.0f));
+		ImGui::Checkbox("Flip widget axes", &test_widget.do_flip);
+
+		editor_widget_set_camera_pos(&test_widget, camera);
 
 		ImGui::Begin("View matrix");
 		ImGui::Text("%6.2f %6.2f %6.2f %6.2f", view._11, view._12, view._13, view._14);
@@ -174,7 +221,7 @@ int main(int argc, char **argv)
 			}
 		}
 
-		debug_draw_line(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 5.0f, 0.0f));
+		editor_widget_draw(&test_widget);
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 

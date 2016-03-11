@@ -23,6 +23,11 @@ struct Vec3
 	float x, y, z;
 };
 
+struct Vec4
+{
+	float x, y, z, w;
+};
+
 Vec2 vec2(float x, float y)
 {
 	Vec2 ret;
@@ -179,6 +184,30 @@ Vec3 cross(const Vec3& a, const Vec3& b)
 	ret.z = a.x*b.y - a.y*b.x;
 
 	return ret;
+}
+
+Vec4 vec4(float x, float y, float z, float w)
+{
+	Vec4 ret;
+	ret.x = x;
+	ret.y = y;
+	ret.z = z;
+	ret.w = w;
+	return ret;
+}
+
+Vec4 vec4(const Vec3& xyz, float w)
+{
+	return vec4(xyz.x, xyz.y, xyz.z, w);
+}
+
+Vec4& operator*=(Vec4& a, float b)
+{
+	a.x *= b;
+	a.y *= b;
+	a.z *= b;
+	a.w *= b;
+	return a;
 }
 
 float length_squared(const Vec3& a)
@@ -454,6 +483,18 @@ Vec3 operator*(const Vec3& vec, const Mat44& mat)
 	ret.x = vec.x*mat._11 + vec.y*mat._12 + vec.z*mat._13 + mat._14;
 	ret.y = vec.x*mat._21 + vec.y*mat._22 + vec.z*mat._23 + mat._24;
 	ret.z = vec.x*mat._31 + vec.y*mat._32 + vec.z*mat._33 + mat._34;
+
+	return ret;
+}
+
+Vec4 operator*(const Vec4& vec, const Mat44& mat)
+{
+	Vec4 ret;
+
+	ret.x = vec.x*mat._11 + vec.y*mat._12 + vec.z*mat._13 + mat._14;
+	ret.y = vec.x*mat._21 + vec.y*mat._22 + vec.z*mat._23 + mat._24;
+	ret.z = vec.x*mat._31 + vec.y*mat._32 + vec.z*mat._33 + mat._34;
+	ret.w = vec.x*mat._41 + vec.y*mat._42 + vec.z*mat._43 + mat._44;
 
 	return ret;
 }
