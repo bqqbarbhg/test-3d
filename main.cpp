@@ -79,6 +79,8 @@ int main(int argc, char **argv)
 		Vec3 camera = vec3(0.0f, 0.0f, 10.0f) * cam_mat;
 		Mat44 view = mat44_lookat(camera_target + camera, camera_target, vec3(0.0f, 1.0f, 0.0f));
 
+		editor_widget_set_camera_pos(&test_widget, camera);
+
 		Mat44 world_to_screen = view * proj;
 		Mat44 screen_to_world = inverse(world_to_screen);
 
@@ -141,18 +143,8 @@ int main(int argc, char **argv)
 		glClearColor(0x64/255.0f, 0x95/255.0f, 0xED/255.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-
-
 		ImGui::Checkbox("Flip widget axes", &test_widget.do_flip);
 
-		editor_widget_set_camera_pos(&test_widget, camera);
-
-		ImGui::Begin("View matrix");
-		ImGui::Text("%6.2f %6.2f %6.2f %6.2f", view._11, view._12, view._13, view._14);
-		ImGui::Text("%6.2f %6.2f %6.2f %6.2f", view._21, view._22, view._23, view._24);
-		ImGui::Text("%6.2f %6.2f %6.2f %6.2f", view._31, view._32, view._33, view._34);
-		ImGui::Text("%6.2f %6.2f %6.2f %6.2f", view._41, view._42, view._43, view._44);
-		ImGui::End();
 
 		Mat44 viewt = transpose(view);
 
