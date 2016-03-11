@@ -27,13 +27,41 @@ int main(int argc, char **argv)
 	Mat44 *world_transform = (Mat44*)malloc(sizeof(Mat44) * model->node_count);
 	Mat44 *bone_transform = (Mat44*)malloc(sizeof(Mat44) * 256);
 
+	float yaw = 0.0f;
+	float pitch = 0.0f;
+	Vec3 camera_target = vec3(0.0f, 0.0f, 0.0f);
+
+	Vec2 prev_mouse_pos = vec2(0.0f, 0.0f);
+
 	while (!glfwWindowShouldClose(window)) {
 		double time = glfwGetTime();
 
 		ImGui_ImplGlfw_NewFrame();
+		debug_draw_reset();
 
+		if (!ImGui::GetIO().WantCaptureMouse) {
+
+			double x, y;
+			glfwGetCursorPos(window, &x, &y);
+			Vec2 mouse_pos = vec2((float)x, (float)y);
+			Vec2 mouse_delta = mouse_pos - prev_mouse_pos;
+
+			if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT)) {
+				yaw -= mouse_delta.x * 0.01f;
+				pitch -= mouse_delta.y * 0.01f;
+			} else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE)) {
+				Mat44 cam_mat = mat44_rotate_x(pitch) * mat44_rotate_y(yaw);
+				Vec3 forward = vec3(0.0f, 0.0f, 1.0f) * cam_mat;
+				Vec3 right = normalize(cross(vec3(0.0f, 1.0f, 0.0f), forward));
+				Vec3 up = normalize(cross(right, forward));
+				camera_target -= (mouse_delta.x * right + mouse_delta.y * up) * 0.01f;
+			}
+
+			prev_mouse_pos = mouse_pos;
+		}
+
+		glColor3f(1.0f, 1.0f, 1.0f);
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
 
 		Mat44 mat = mat44_rotate_x(sinf((float)time));
 
@@ -53,7 +81,6 @@ int main(int argc, char **argv)
 			}
 		}
 
-
 		// Clearing the viewport
 		int width, height;
 		glfwGetWindowSize(window, &width, &height);
@@ -64,8 +91,14 @@ int main(int argc, char **argv)
 		Mat44 proj = mat44_perspective(1.0f, (float)width / (float)height, 0.01f, 100.0f);
 		Mat44 projt = transpose(proj);
 
-		//time = 0.0f;
-		Mat44 view = mat44_lookat(vec3(sinf((float)time * 0.2f) * 10.0f, 10.0f, cosf((float)time * 0.2f) * 10.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
+		if (pitch > 1.5f)
+			pitch = 1.5f;
+		if (pitch < -1.5f)
+			pitch = -1.5f;
+
+		Mat44 cam_mat = mat44_rotate_x(pitch) * mat44_rotate_y(yaw);
+		Vec3 camera = vec3(0.0f, 0.0f, 10.0f) * cam_mat;
+		Mat44 view = mat44_lookat(camera_target + camera, camera_target, vec3(0.0f, 1.0f, 0.0f));
 
 		ImGui::Begin("View matrix");
 		ImGui::Text("%6.2f %6.2f %6.2f %6.2f", view._11, view._12, view._13, view._14);
@@ -126,19 +159,32 @@ int main(int argc, char **argv)
 					temp_transform_buffer[vertexI] = result;
 				}
 
-				glBegin(GL_TRIANGLES);
-				U32 index_count = mesh->index_count;
-				for (U32 i = 0; i < index_count; i++) {
-					Vec3 pos = temp_transform_buffer[mesh->indices[i]];
-					glVertex3f(pos.x, pos.y, pos.z);
-				}
+				static bool do_mesh_draw = false;
+				ImGui::Checkbox("Draw mesh", &do_mesh_draw);
 
-				glEnd();
+				if (do_mesh_draw) {
+					glBegin(GL_TRIANGLES);
+					U32 index_count = mesh->index_count;
+					for (U32 i = 0; i < index_count; i++) {
+						Vec3 pos = temp_transform_buffer[mesh->indices[i]];
+						glVertex3f(pos.x, pos.y, pos.z);
+					}
+					glEnd();
+				}
 			}
 		}
 
-		// Render GUI
+		debug_draw_line(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 5.0f, 0.0f));
+
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+		static bool do_debug_draw = true;
+		ImGui::Checkbox("Debug debug lines", &do_debug_draw);
+		if (do_debug_draw) {
+			debug_draw_render();
+		}
+
+		// Render GUI
 		ImGui::Render();
 
 		// Update GLFW

@@ -23,6 +23,58 @@ struct Vec3
 	float x, y, z;
 };
 
+Vec2 vec2(float x, float y)
+{
+	Vec2 ret;
+	ret.x = x;
+	ret.y = y;
+	return ret;
+}
+
+Vec2 operator-(const Vec2& a)
+{
+	Vec2 ret;
+
+	ret.x = -a.x;
+	ret.y = -a.y;
+
+	return ret;
+}
+
+Vec2 operator+(const Vec2& a, const Vec2& b)
+{
+	Vec2 ret;
+
+	ret.x = a.x + b.x;
+	ret.y = a.y + b.y;
+
+	return ret;
+}
+
+Vec2& operator+=(Vec2& a, const Vec2& b)
+{
+	a.x += b.x;
+	a.y += b.y;
+	return a;
+}
+
+Vec2& operator-=(Vec2& a, const Vec2& b)
+{
+	a.x -= b.x;
+	a.y -= b.y;
+	return a;
+}
+
+Vec2 operator-(const Vec2& a, const Vec2& b)
+{
+	Vec2 ret;
+
+	ret.x = a.x - b.x;
+	ret.y = a.y - b.y;
+
+	return ret;
+}
+
 Vec3 vec3(float x, float y, float z)
 {
 	Vec3 ret;
@@ -61,6 +113,13 @@ Vec3& operator+=(Vec3& a, const Vec3& b)
 	a.z += b.z;
 	return a;
 }
+Vec3& operator-=(Vec3& a, const Vec3& b)
+{
+	a.x -= b.x;
+	a.y -= b.y;
+	a.z -= b.z;
+	return a;
+}
 
 Vec3 operator-(const Vec3& a, const Vec3& b)
 {
@@ -91,6 +150,17 @@ Vec3 operator*(const Vec3& a, float b)
 	ret.x = a.x * b;
 	ret.y = a.y * b;
 	ret.z = a.z * b;
+
+	return ret;
+}
+
+Vec3 operator*(float a, const Vec3& b)
+{
+	Vec3 ret;
+
+	ret.x = a * b.x;
+	ret.y = a * b.y;
+	ret.z = a * b.z;
 
 	return ret;
 }

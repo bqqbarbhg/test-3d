@@ -1,4 +1,7 @@
+#include "prelude.h"
+
 #if defined(_WIN32)
+	#define NOMINMAX
 	#include <Windows.h>
 	#include <windef.h>
 	#include <GL/gl.h>
@@ -13,6 +16,7 @@
 #include "imgui_impl_glfw.cpp"
 #include "temp_allocator.cpp"
 #include "math.cpp"
+#include "debug_draw.cpp"
 #include "model.cpp"
 #include "main.cpp"
 

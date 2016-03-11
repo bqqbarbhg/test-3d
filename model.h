@@ -1,9 +1,4 @@
 
-// TODO: Remove these
-typedef unsigned int U32;
-typedef unsigned short U16;
-typedef unsigned char U8;
-
 #define MAX_TEXCOORD_STREAMS 4
 
 struct Bone
