@@ -308,6 +308,42 @@ Mat44 mat44_rotate_z(float angle)
 	return ret;
 }
 
+Mat44 mat44_rotate_normalized_axis(const Vec3& axis, float angle)
+{
+	Mat44 ret;
+
+	float cos = cosf(angle);
+	float mcos = 1.0f - cos;
+	float sin = sinf(angle);
+
+	ret._11 = cos + axis.x*axis.x*mcos;
+	ret._12 = axis.x*axis.y*mcos - axis.z*sin;
+	ret._13 = axis.x*axis.z*mcos + axis.y*sin;
+	ret._14 = 0.0f;
+
+	ret._21 = axis.x*axis.y*mcos + axis.z*sin;
+	ret._22 = cos + axis.y*axis.y*mcos;
+	ret._23 = axis.y*axis.z*mcos - axis.x*sin;
+	ret._24 = 0.0f;
+
+	ret._31 = axis.x*axis.z*mcos - axis.y*sin;
+	ret._32 = axis.y*axis.z*mcos + axis.x*sin;
+	ret._33 = cos + axis.z*axis.z*mcos;
+	ret._34 = 0.0f;
+
+	ret._41 = 0.0f;
+	ret._42 = 0.0f;
+	ret._43 = 0.0f;
+	ret._44 = 1.0f;
+
+	return ret;
+}
+
+Mat44 mat44_rotate_axis(const Vec3& axis, float angle)
+{
+	return mat44_rotate_normalized_axis(normalize(axis), angle);
+}
+
 Mat44 mat44_axes(const Vec3& forward, const Vec3& right, const Vec3& up, const Vec3& pos = vec3_zero)
 {
 	Mat44 ret;
