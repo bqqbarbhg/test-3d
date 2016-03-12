@@ -156,7 +156,7 @@ bool editor_widget_update(Editor_Widget *w, Editor_Mouse_State mouse, Editor_Mou
 		Line_T2 prev_ts = closest_points_on_lines(axis, prev_mouse.world_ray);
 		Line_T2 cur_ts = closest_points_on_lines(axis, mouse.world_ray);
 
-		if (prev_ts.parallel || cur_ts.parallel || prev_ts.t1 < 0.0f || cur_ts.t1 < 0.0f)
+		if (prev_ts.parallel || cur_ts.parallel || prev_ts.t2 < 0.0f || cur_ts.t2 < 0.0f)
 			return false;
 
 		Vec3 prev_pos = ray_at(axis, prev_ts.t1);
