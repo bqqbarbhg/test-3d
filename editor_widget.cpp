@@ -39,7 +39,7 @@ struct Editor_Mouse_State
 Ray editor_widget_axis(const Editor_Widget *w, int axis)
 {
 	float sign = w->flip[axis] ? -1.0f : 1.0f;
-	return ray_to_dir(w->position, w->axes[axis] * 1.0f * sign);
+	return ray_to_dir(w->position, w->axes[axis] * 1.5f * sign);
 }
 
 void editor_widget_reset(Editor_Widget *w)
@@ -129,13 +129,13 @@ void editor_widget_set_camera_pos(Editor_Widget *w, const Vec3& pos)
 void editor_widget_draw(Editor_Widget *w)
 {
 	static const Vec3 axis_color[] = {
-		{ 1.0f, 0.0f, 0.0f },
-		{ 0.0f, 1.0f, 0.0f },
-		{ 0.0f, 0.0f, 1.0f },
+		{ 0.9f, 0.0f, 0.0f },
+		{ 0.0f, 0.9f, 0.0f },
+		{ 0.0f, 0.0f, 0.9f },
 	};
 	static const Vec3 axis_color_selected[] = {
-		{ 1.0f, 0.5f, 0.5f },
-		{ 0.5f, 1.0f, 0.5f },
+		{ 1.0f, 0.3f, 0.3f },
+		{ 0.3f, 1.0f, 0.3f },
 		{ 0.3f, 0.3f, 1.0f },
 	};
 
@@ -145,14 +145,70 @@ void editor_widget_draw(Editor_Widget *w)
 	else if (w->hovered_part)
 		highlight_part = w->hovered_part;
 
+	glEnableClientState(GL_VERTEX_ARRAY);
+
 	for (int i = 0; i < 3; i++) {
 		Ray axis = editor_widget_axis(w, i);
 
-		if (w->is_active && highlight_part == Editor_Widget_Part_X_Axis + i) {
-			debug_draw_line(axis, axis_color_selected[i]);
+		const int circle_segments = 8;
+		Vec3 vertices[circle_segments * 3 + 2];
+		U16 indices[circle_segments * 18];
+
+		Vec3 norm = normalize(axis.direction);
+		Vec3 right;
+
+		if (fabs(dot(norm, vec3(0.0f, 1.0f, 0.0f))) > 0.9f) {
+			right = normalize(cross(norm, vec3(1.0f, 0.0f, 0.0f)));
 		} else {
-			debug_draw_line(axis, axis_color[i]);
+			right = normalize(cross(norm, vec3(0.0f, 1.0f, 0.0f)));
 		}
+		Vec3 up = normalize(cross(right, norm));
+
+		const float tail_radius = 0.05f;
+		const float head_radius = 0.1f;
+		const float head_lenth = 0.4f;
+
+		float tail_length = length(axis.direction) - head_lenth;
+		Vec3 head_start = axis.origin + norm * max(tail_length, 0.0f);
+
+		vertices[0] = axis.origin;
+		vertices[1] = axis.origin + axis.direction;
+
+		U16 *iptr = indices;
+
+		for (int segment = 0; segment < circle_segments; segment++) {
+			float angle = (float)segment / (float)circle_segments * FLT_PI * 2.0f;
+			Vec3 dir = right * cosf(angle) + up * sinf(angle);
+
+			vertices[2 + segment * 3 + 0] = axis.origin + dir * tail_radius;
+			vertices[2 + segment * 3 + 1] = head_start + dir * tail_radius;
+			vertices[2 + segment * 3 + 2] = head_start + dir * head_radius;
+
+			unsigned next_segment = (segment + 1) % circle_segments;
+
+			U16 a = (U16)(2 + segment * 3);
+			U16 b = (U16)(2 + next_segment * 3);
+
+			*iptr++ =   0; *iptr++ = a+0; *iptr++ = b+0;
+			*iptr++ = a+0; *iptr++ = b+0; *iptr++ = a+1;
+			*iptr++ = b+0; *iptr++ = a+1; *iptr++ = b+1;
+			*iptr++ = a+1; *iptr++ = b+1; *iptr++ = b+2;
+			*iptr++ = b+1; *iptr++ = a+2; *iptr++ = b+2;
+			*iptr++ = a+2; *iptr++ = b+2; *iptr++ =   1;
+		}
+		
+		glVertexPointer(3, GL_FLOAT, 0, vertices);
+
+		if (w->is_active && highlight_part == Editor_Widget_Part_X_Axis + i) {
+			glColor3fv((GLfloat*)&axis_color_selected[i]);
+		} else {
+			glColor3fv((GLfloat*)&axis_color[i]);
+		}
+		
+		glDrawElements(GL_TRIANGLES, Count(indices), GL_UNSIGNED_SHORT, indices);
+
 	}
+	glVertexPointer(3, GL_FLOAT, 0, 0);
+	glDisableClientState(GL_VERTEX_ARRAY);
 }
 

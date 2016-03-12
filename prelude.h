@@ -29,4 +29,6 @@ typedef uint64_t U64;
 #define UINT32_MAX 0xFFFFFFFF
 #endif
 
+#define FLT_PI 3.14159f
+
 #endif

@@ -76,7 +76,7 @@ int main(int argc, char **argv)
 			pitch = -1.5f;
 
 		Mat44 cam_mat = mat44_rotate_x(pitch) * mat44_rotate_y(yaw);
-		Vec3 camera = vec3(0.0f, 0.0f, 10.0f) * cam_mat;
+		Vec3 camera = vec3(0.0f, 0.0f, 15.0f) * cam_mat;
 		Mat44 view = mat44_lookat(camera_target + camera, camera_target, vec3(0.0f, 1.0f, 0.0f));
 
 		editor_widget_set_camera_pos(&test_widget, camera);
@@ -214,8 +214,6 @@ int main(int argc, char **argv)
 		}
 
 		editor_widget_draw(&test_widget);
-
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 		static bool do_debug_draw = true;
 		ImGui::Checkbox("Debug debug lines", &do_debug_draw);
