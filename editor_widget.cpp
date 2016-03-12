@@ -57,7 +57,7 @@ float editor_widget_pick(Editor_Widget *w, Editor_Mouse_State mouse)
 	for (int i = 0; i < 3; i++) {
 		Ray axis = editor_widget_axis(w, i);
 		Line_T2 ts = closest_points_on_lines(axis, mouse.world_ray);
-		if (ts.parallel)
+		if (ts.parallel || ts.t2 < 0.0f)
 			continue;
 
 		if (ts.t1 < 0.0f || ts.t1 > 1.0f)
