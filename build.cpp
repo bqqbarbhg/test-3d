@@ -11,6 +11,9 @@
 	#error "Unknown platform"
 #endif
 
+#define DEBUG_VALUE(val) ImGui::Value(#val, (val))
+#include <imgui.h>
+
 #include "imgui/imgui.cpp"
 #include "imgui/imgui_draw.cpp"
 #include "imgui_impl_glfw.cpp"

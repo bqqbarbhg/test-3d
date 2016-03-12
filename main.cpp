@@ -1,6 +1,5 @@
 #include <GLFW/glfw3.h>
 
-#include <imgui.h>
 #include "imgui_impl_glfw.h"
 
 int main(int argc, char **argv)
@@ -35,9 +34,23 @@ int main(int argc, char **argv)
 	Vec2 prev_mouse_pos = vec2(0.0f, 0.0f);
 	Editor_Mouse_State prev_editor_mouse = { 0 };
 
-	static Editor_Widget test_widget = { 0 };
-	test_widget.axis_pick_distance = 0.15f;
-	editor_widget_set_mat44(&test_widget, mat44_identity);
+	Editor_Widget edit_widgets[64] = { 0 };
+	U32 edit_nodes[64];
+	U32 edit_object_count = 0;
+
+	for (U32 i = 0; i < model->node_count; i++) {
+		Node *node = &model->nodes[i];
+
+		if (!strcmp(node->name, "Bone") ||
+			!strcmp(node->name, "Bone.001") ||
+			!strcmp(node->name, "Bone.002")) {
+
+			edit_nodes[edit_object_count] = i;
+			edit_widgets[edit_object_count].axis_pick_distance = 0.15f;
+			edit_widgets[edit_object_count].do_flip = true;
+			edit_object_count++;
+		}
+	}
 
 	while (!glfwWindowShouldClose(window)) {
 		double time = glfwGetTime();
@@ -50,7 +63,10 @@ int main(int argc, char **argv)
 
 		ImGui_ImplGlfw_NewFrame();
 		debug_draw_reset();
-		editor_widget_reset(&test_widget);
+
+		for (U32 i = 0; i < edit_object_count; i++) {
+			editor_widget_reset(&edit_widgets[i]);
+		}
 
 		double x, y;
 		glfwGetCursorPos(window, &x, &y);
@@ -80,7 +96,9 @@ int main(int argc, char **argv)
 		Vec3 camera = vec3(0.0f, 0.0f, 15.0f) * cam_mat;
 		Mat44 view = mat44_lookat(camera_target + camera, camera_target, vec3(0.0f, 1.0f, 0.0f));
 
-		editor_widget_set_camera_pos(&test_widget, camera);
+		for (U32 i = 0; i < edit_object_count; i++) {
+			editor_widget_set_camera_pos(&edit_widgets[i], camera);
+		}
 
 		Mat44 world_to_screen = view * proj;
 		Mat44 screen_to_world = inverse(world_to_screen);
@@ -99,20 +117,48 @@ int main(int argc, char **argv)
 		editor_mouse.world_ray = mouse_ray;
 		editor_mouse.is_pressed = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) != GLFW_RELEASE;
 
-		if (!ImGui::GetIO().WantCaptureMouse) {
-			float dist = editor_widget_pick(&test_widget, editor_mouse);
-			if (dist >= 0.0f) {
-				test_widget.is_active = true;
+		bool widget_selected = false;
+		for (U32 i = 0; i < edit_object_count; i++) {
+			if (edit_widgets[i].selected_part) {
+				edit_widgets[i].is_active = true;
+				widget_selected = true;
+				break;
 			}
 		}
 
-		if (test_widget.selected_part)
-			test_widget.is_active = true;
+		for (U32 i = 0; i < edit_object_count; i++) {
+			editor_widget_set_mat44(&edit_widgets[i], world_transform[edit_nodes[i]]);
+		}
 
-		if (test_widget.is_active) {
+		if (!ImGui::GetIO().WantCaptureMouse && !widget_selected) {
+
+			float closest = FLT_MAX;
+			int closest_i = -1;
+
+			for (U32 i = 0; i < edit_object_count; i++) {
+				float dist = editor_widget_pick(&edit_widgets[i], editor_mouse);
+				if (dist < 0.0f) continue;
+
+				if (dist < closest) {
+					closest = dist;
+					closest_i = (int)i;
+				}
+			}
+
+			if (closest_i >= 0) {
+				edit_widgets[closest_i].is_active = true;
+			}
+		}
+
+		for (U32 i = 0; i < edit_object_count; i++) {
+			if (!edit_widgets[i].is_active) continue;
+
 			Mat44 xform;
-			if (editor_widget_update(&test_widget, editor_mouse, prev_editor_mouse, &xform)) {
-				test_widget.position = test_widget.position * xform;
+			if (editor_widget_update(&edit_widgets[i], editor_mouse, prev_editor_mouse, &xform)) {
+				Node *node = &model->nodes[edit_nodes[i]];
+				const Mat44& parent = world_transform[node->parent - model->nodes];
+
+				node->transform = world_transform[edit_nodes[i]] * xform * inverse(parent);
 			}
 		}
 
@@ -130,12 +176,6 @@ int main(int argc, char **argv)
 			} else {
 				world_transform[i] = node->transform;
 			}
-
-			if (!strcmp(node->name, "Bone.001")) {
-				world_transform[i] = mat * world_transform[i];
-			} else if (!strcmp(node->name, "Bone.002")) {
-				world_transform[i] = inverse(mat) * world_transform[i];
-			}
 		}
 
 		glEnable(GL_DEPTH_TEST);
@@ -144,8 +184,6 @@ int main(int argc, char **argv)
 		glViewport(0, 0, width, height);
 		glClearColor(0x64/255.0f, 0x95/255.0f, 0xED/255.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-
-		ImGui::Checkbox("Flip widget axes", &test_widget.do_flip);
 
 		Mat44 viewt = transpose(view);
 
@@ -199,7 +237,7 @@ int main(int argc, char **argv)
 					temp_transform_buffer[vertexI] = result;
 				}
 
-				static bool do_mesh_draw = false;
+				static bool do_mesh_draw = true;
 				ImGui::Checkbox("Draw mesh", &do_mesh_draw);
 
 				if (do_mesh_draw) {
@@ -215,7 +253,10 @@ int main(int argc, char **argv)
 		}
 
 		glClear(GL_DEPTH_BUFFER_BIT);
-		editor_widget_draw(&test_widget);
+
+		for (U32 i = 0; i < edit_object_count; i++) {
+			editor_widget_draw(&edit_widgets[i]);
+		}
 
 		static bool do_debug_draw = true;
 		ImGui::Checkbox("Debug debug lines", &do_debug_draw);
