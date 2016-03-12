@@ -118,7 +118,6 @@ int main(int argc, char **argv)
 		prev_editor_mouse = editor_mouse;
 
 		glColor3f(1.0f, 1.0f, 1.0f);
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 		Mat44 mat = mat44_rotate_x(sinf((float)time));
 
@@ -138,13 +137,14 @@ int main(int argc, char **argv)
 			}
 		}
 
+		glEnable(GL_DEPTH_TEST);
+
 		// Clearing the viewport
 		glViewport(0, 0, width, height);
 		glClearColor(0x64/255.0f, 0x95/255.0f, 0xED/255.0f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
 		ImGui::Checkbox("Flip widget axes", &test_widget.do_flip);
-
 
 		Mat44 viewt = transpose(view);
 
@@ -213,6 +213,7 @@ int main(int argc, char **argv)
 			}
 		}
 
+		glClear(GL_DEPTH_BUFFER_BIT);
 		editor_widget_draw(&test_widget);
 
 		static bool do_debug_draw = true;
