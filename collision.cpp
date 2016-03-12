@@ -27,6 +27,32 @@ Vec3 ray_at(const Ray& ray, float t)
 	return ray.origin + ray.direction * t;
 }
 
+struct Plane
+{
+	Vec3 normal;
+	float d;
+};
+
+Plane plane(Vec3 normal, float d)
+{
+	Plane plane;
+	plane.normal = normal;
+	plane.d = d;
+	return plane;
+}
+
+Plane plane_from_point_normal(Vec3 point, Vec3 normal)
+{
+	float d = dot(point, normal);
+	return plane(normal, d);
+}
+
+struct Line_T1
+{
+	float t;
+	int parallel;
+};
+
 struct Line_T2
 {
 	float t1;
@@ -34,7 +60,7 @@ struct Line_T2
 	int parallel;
 };
 
-Line_T2 closest_points_on_lines(Vec3 p1, Vec3 d1, Vec3 p2, Vec3 d2)
+Line_T2 closest_points_on_lines(const Vec3& p1, const Vec3& d1, const Vec3& p2, const Vec3& d2)
 {
 	// Real-Time Collision Detection 5.1.18
 	Vec3 r = p1 - p2;
@@ -65,8 +91,29 @@ Line_T2 closest_points_on_lines(Vec3 p1, Vec3 d1, Vec3 p2, Vec3 d2)
 	return ret;
 }
 
-Line_T2 closest_points_on_lines(Ray r1, Ray r2)
+Line_T2 closest_points_on_lines(const Ray& r1, const Ray& r2)
 {
 	return closest_points_on_lines(r1.origin, r1.direction, r2.origin, r2.direction);
+}
+
+Line_T1 intersect_line_plane(const Vec3& pos, const Vec3& dir, const Vec3& normal, float d)
+{
+	Line_T1 ret;
+
+	float divisor = dot(normal, dir);
+	if (FAST_ABS(divisor) < COLLISION_EPSILON) {
+		ret.t = 0.0f;
+		ret.parallel = 1;
+	} else {
+		ret.t = (d - dot(normal, pos)) / divisor;
+		ret.parallel = 0;
+	}
+
+	return ret;
+}
+
+Line_T1 intersect_line_plane(const Ray& line, const Plane& plane)
+{
+	return intersect_line_plane(line.origin, line.direction, plane.normal, plane.d);
 }
 

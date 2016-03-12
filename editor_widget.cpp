@@ -5,6 +5,9 @@ enum Editor_Widget_Part
 	Editor_Widget_Part_X_Axis,
 	Editor_Widget_Part_Y_Axis,
 	Editor_Widget_Part_Z_Axis,
+	Editor_Widget_Part_XY_Plane,
+	Editor_Widget_Part_XZ_Plane,
+	Editor_Widget_Part_YZ_Plane,
 };
 
 struct Editor_Widget
@@ -20,6 +23,19 @@ struct Editor_Widget
 
 	Editor_Widget_Part selected_part;
 	Editor_Widget_Part hovered_part;
+};
+
+
+struct Editor_Widget_Plane
+{
+	int a;
+	int b;
+	int normal;
+};
+const Editor_Widget_Plane editor_widget_planes[] = {
+	{ 0, 1, 2 },
+	{ 0, 2, 1 },
+	{ 1, 2, 0 },
 };
 
 void editor_widget_set_mat44(Editor_Widget *w, const Mat44& m)
@@ -39,7 +55,7 @@ struct Editor_Mouse_State
 Ray editor_widget_axis(const Editor_Widget *w, int axis)
 {
 	float sign = w->flip[axis] ? -1.0f : 1.0f;
-	return ray_to_dir(w->position, w->axes[axis] * 1.5f * sign);
+	return ray_to_dir(w->position, w->axes[axis] * 2.0f * sign);
 }
 
 void editor_widget_reset(Editor_Widget *w)
@@ -50,34 +66,72 @@ void editor_widget_reset(Editor_Widget *w)
 
 float editor_widget_pick(Editor_Widget *w, Editor_Mouse_State mouse)
 {
-	float closest = w->axis_pick_distance;
-	float closest_t = 0.0f;
-	int closest_axis = -1;
+	// Check for axis intersection
+	{
+		float closest = w->axis_pick_distance;
+		float closest_t = 0.0f;
+		int closest_axis = -1;
 
-	for (int i = 0; i < 3; i++) {
-		Ray axis = editor_widget_axis(w, i);
-		Line_T2 ts = closest_points_on_lines(axis, mouse.world_ray);
-		if (ts.parallel || ts.t2 < 0.0f)
-			continue;
+		for (int i = 0; i < 3; i++) {
+			Ray axis = editor_widget_axis(w, i);
+			Line_T2 ts = closest_points_on_lines(axis, mouse.world_ray);
+			if (ts.parallel || ts.t2 < 0.0f)
+				continue;
 
-		if (ts.t1 < 0.0f || ts.t1 > 1.0f)
-			continue;
+			if (ts.t1 < 0.0f || ts.t1 > 1.0f)
+				continue;
 
-		float distance = length(ray_at(axis, ts.t1) - ray_at(mouse.world_ray, ts.t2));
-		if (distance < closest) {
-			closest = distance;
-			closest_t = ts.t2;
-			closest_axis = i;
+			float distance = length(ray_at(axis, ts.t1) - ray_at(mouse.world_ray, ts.t2));
+			if (distance < closest) {
+				closest = distance;
+				closest_t = ts.t2;
+				closest_axis = i;
+			}
+		}
+
+		if (closest_axis >= 0) {
+			w->hovered_part = (Editor_Widget_Part)(Editor_Widget_Part_X_Axis + closest_axis);
+			return closest_t;
 		}
 	}
 
-	if (closest_axis < 0) {
-		w->hovered_part = Editor_Widget_Part_None;
-		return -1.0f;
+	// Check for plane quad intersection
+	{
+		float closest = FLT_MAX;
+		int closest_plane = -1;
+		for (int i = 0; i < Count(editor_widget_planes); i++) {
+			Editor_Widget_Plane plane = editor_widget_planes[i];
+			Plane p = plane_from_point_normal(w->position, w->axes[plane.normal]);
+			Line_T1 ts = intersect_line_plane(mouse.world_ray, p);
+			if (ts.parallel || ts.t < 0.0f)
+				continue;
+
+			Vec3 point = ray_at(mouse.world_ray, ts.t);
+			Vec3 dir = point - w->position;
+
+			Vec3 a = editor_widget_axis(w, plane.a).direction;
+			Vec3 b = editor_widget_axis(w, plane.b).direction;
+
+			float at = dot(dir, normalize(a));
+			float bt = dot(dir, normalize(b));
+
+			if (at < 0.0f || at > 0.5f * length(a)) continue;
+			if (bt < 0.0f || bt > 0.5f * length(a)) continue;
+
+			if (ts.t < closest) {
+				closest = ts.t;
+				closest_plane = i;
+			}
+		}
+
+		if (closest_plane >= 0) {
+			w->hovered_part = (Editor_Widget_Part)(Editor_Widget_Part_XY_Plane + closest_plane);
+			return closest;
+		}
 	}
 
-	w->hovered_part = (Editor_Widget_Part)(Editor_Widget_Part_X_Axis + closest_axis);
-	return closest_t;
+	w->hovered_part = Editor_Widget_Part_None;
+	return -1.0f;
 }
 
 bool editor_widget_update(Editor_Widget *w, Editor_Mouse_State mouse, Editor_Mouse_State prev_mouse, Mat44 *transform)
@@ -102,8 +156,29 @@ bool editor_widget_update(Editor_Widget *w, Editor_Mouse_State mouse, Editor_Mou
 		Line_T2 prev_ts = closest_points_on_lines(axis, prev_mouse.world_ray);
 		Line_T2 cur_ts = closest_points_on_lines(axis, mouse.world_ray);
 
+		if (prev_ts.parallel || cur_ts.parallel || prev_ts.t1 < 0.0f || cur_ts.t1 < 0.0f)
+			return false;
+
 		Vec3 prev_pos = ray_at(axis, prev_ts.t1);
 		Vec3 cur_pos = ray_at(axis, cur_ts.t1);
+
+		*transform = mat44_translate(cur_pos - prev_pos);
+		return true;
+	}
+
+	if (part >= Editor_Widget_Part_XY_Plane && part <= Editor_Widget_Part_YZ_Plane) {
+		Editor_Widget_Plane plane = editor_widget_planes[part - Editor_Widget_Part_XY_Plane];
+
+		Plane p = plane_from_point_normal(w->position, w->axes[plane.normal]);
+
+		Line_T1 prev_ts = intersect_line_plane(prev_mouse.world_ray, p);
+		Line_T1 cur_ts = intersect_line_plane(mouse.world_ray, p);
+
+		if (prev_ts.parallel || cur_ts.parallel || prev_ts.t < 0.0f || cur_ts.t < 0.0f)
+			return false;
+
+		Vec3 prev_pos = ray_at(prev_mouse.world_ray, prev_ts.t);
+		Vec3 cur_pos = ray_at(mouse.world_ray, cur_ts.t);
 
 		*transform = mat44_translate(cur_pos - prev_pos);
 		return true;
@@ -197,17 +272,49 @@ void editor_widget_draw(Editor_Widget *w)
 			*iptr++ = a+2; *iptr++ = b+2; *iptr++ =   1;
 		}
 		
-		glVertexPointer(3, GL_FLOAT, 0, vertices);
-
 		if (w->is_active && highlight_part == Editor_Widget_Part_X_Axis + i) {
 			glColor3fv((GLfloat*)&axis_color_selected[i]);
 		} else {
 			glColor3fv((GLfloat*)&axis_color[i]);
 		}
 		
+		glVertexPointer(3, GL_FLOAT, 0, vertices);
 		glDrawElements(GL_TRIANGLES, Count(indices), GL_UNSIGNED_SHORT, indices);
-
 	}
+
+	for (int i = 0; i < Count(editor_widget_planes); i++) {
+		Editor_Widget_Plane plane = editor_widget_planes[i];
+		Vec3 a = editor_widget_axis(w, plane.a).direction * 0.5f;
+		Vec3 b = editor_widget_axis(w, plane.b).direction * 0.5f;
+
+		const float frame_thickness = 0.1f;
+		const float frame_start = 1.0f - frame_thickness;
+
+		Vec3 vertices[6];
+		vertices[0] = w->position + frame_start * a;
+		vertices[1] = w->position + a;
+		vertices[2] = w->position + frame_start * (a + b);
+		vertices[3] = w->position + a + b;
+		vertices[4] = w->position + frame_start * b;
+		vertices[5] = w->position + b;
+
+		const U16 indices[12] = {
+			0, 1, 2, 2, 1, 3,
+			2, 3, 4, 4, 3, 5,
+		};
+
+		Vec3 col;
+		if (w->is_active && highlight_part == Editor_Widget_Part_XY_Plane + i) {
+			col = vec3(1.0f, 0.2f, 0.2f);
+		} else {
+			col = vec3(0.8f, 0.0f, 0.0f);
+		}
+		glColor3fv((GLfloat*)&col);
+
+		glVertexPointer(3, GL_FLOAT, 0, vertices);
+		glDrawElements(GL_TRIANGLES, Count(indices), GL_UNSIGNED_SHORT, indices);
+	}
+
 	glVertexPointer(3, GL_FLOAT, 0, 0);
 	glDisableClientState(GL_VERTEX_ARRAY);
 }

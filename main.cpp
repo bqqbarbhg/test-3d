@@ -35,7 +35,7 @@ int main(int argc, char **argv)
 	Editor_Mouse_State prev_editor_mouse = { 0 };
 
 	static Editor_Widget test_widget = { 0 };
-	test_widget.axis_pick_distance = 1.0f;
+	test_widget.axis_pick_distance = 0.15f;
 	editor_widget_set_mat44(&test_widget, mat44_identity);
 
 	while (!glfwWindowShouldClose(window)) {
