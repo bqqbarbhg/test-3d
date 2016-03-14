@@ -1,4 +1,5 @@
 #include "prelude.h"
+#include "intrinsics.h"
 
 #if defined(_WIN32)
 	#define NOMINMAX

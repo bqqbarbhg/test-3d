@@ -308,7 +308,7 @@ void editor_widget_draw(Editor_Widget *w)
 		const float head_lenth = 0.4f;
 
 		float tail_length = length(axis.direction) - head_lenth;
-		Vec3 head_start = axis.origin + norm * fmaxf(tail_length, 0.0f);
+		Vec3 head_start = axis.origin + norm * MMAX(tail_length, 0.0f);
 
 		vertices[0] = axis.origin;
 		vertices[1] = axis.origin + axis.direction;
