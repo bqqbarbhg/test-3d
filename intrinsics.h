@@ -19,8 +19,8 @@ inline float mmax_impl(float a, float b)
 	return a > b ? a : b;
 }
 
-#define MMAX(a, b) (mmin_impl(a, b))
-#define MMIN(a, b) (mmax_impl(a, b))
+#define MMAX(a, b) (mmax_impl(a, b))
+#define MMIN(a, b) (mmin_impl(a, b))
 
 #endif
 
