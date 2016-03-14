@@ -1,5 +1,7 @@
 #include <math.h>
 
+#define ASSERT_NEARLY_NORMALIZED(vec) (assert(fabs(length_squared(vec) - 1.0f) < 0.01f))
+
 struct Mat44
 {
 	union {
@@ -217,7 +219,7 @@ float length_squared(const Vec3& a)
 
 float length(const Vec3& a)
 {
-	return sqrtf(a.x*a.x + a.y*a.y + a.z*a.z);
+	return MSQRT(a.x*a.x + a.y*a.y + a.z*a.z);
 }
 
 Vec3 normalize(const Vec3& a)
@@ -311,6 +313,8 @@ Mat44 mat44_rotate_z(float angle)
 Mat44 mat44_rotate_normalized_axis(const Vec3& axis, float angle)
 {
 	Mat44 ret;
+
+	ASSERT_NEARLY_NORMALIZED(axis);
 
 	float cos = cosf(angle);
 	float mcos = 1.0f - cos;

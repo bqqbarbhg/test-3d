@@ -117,3 +117,44 @@ Line_T1 intersect_line_plane(const Ray& line, const Plane& plane)
 	return intersect_line_plane(line.origin, line.direction, plane.normal, plane.d);
 }
 
+struct Line_Sphere_T
+{
+	int num;
+	float t[2];
+};
+
+Line_Sphere_T intersect_line_sphere_normalized(const Vec3& pos, const Vec3& dir, const Vec3& center, float radius)
+{
+	Line_Sphere_T ret;
+
+	ASSERT_NEARLY_NORMALIZED(dir);
+
+	Vec3 diff = center - pos;
+	float proj = dot(dir, diff);
+	float discriminant = proj*proj + length_squared(diff) + radius * radius;
+
+	if (discriminant < 0.0f) {
+		ret.num = 0;
+	} else if (discriminant == 0.0f) {
+		ret.num = 1;
+		ret.t[0] = -proj;
+	} else {
+		ret.num = 2;
+		float root = MSQRT(discriminant);
+		ret.t[0] = -proj + root;
+		ret.t[1] = -proj - root;
+	}
+
+	return ret;
+}
+
+Line_Sphere_T intersect_line_sphere(const Vec3& pos, const Vec3& dir, const Vec3& center, float radius)
+{
+	return intersect_line_sphere_normalized(pos, normalize(dir), center, radius);
+}
+
+Line_Sphere_T intersect_line_sphere(const Ray& ray, const Vec3& center, float radius)
+{
+	return intersect_line_sphere(ray.origin, ray.direction, center, radius);
+}
+
