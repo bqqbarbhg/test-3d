@@ -225,8 +225,8 @@ bool editor_widget_update(Editor_Widget *w, Editor_Mouse_State mouse, Editor_Mou
 		if (prev_ts.parallel || cur_ts.parallel || prev_ts.t < 0.0f || cur_ts.t < 0.0f)
 			return false;
 
-		Vec3 prev_pos = ray_at(prev_mouse.world_ray, prev_ts.t);
-		Vec3 cur_pos = ray_at(mouse.world_ray, cur_ts.t);
+		Vec3 prev_pos = ray_at(prev_mouse.world_ray, prev_ts.t) - w->position;
+		Vec3 cur_pos = ray_at(mouse.world_ray, cur_ts.t) - w->position;
 
 		Vec3 norm = normalize(w->axes[plane.normal]);
 		Vec3 right;
