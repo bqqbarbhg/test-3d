@@ -96,10 +96,6 @@ int main(int argc, char **argv)
 		Vec3 camera = vec3(0.0f, 0.0f, 15.0f) * cam_mat;
 		Mat44 view = mat44_lookat(camera_target + camera, camera_target, vec3(0.0f, 1.0f, 0.0f));
 
-		for (U32 i = 0; i < edit_object_count; i++) {
-			editor_widget_set_camera_pos(&edit_widgets[i], camera);
-		}
-
 		Mat44 world_to_screen = view * proj;
 		Mat44 screen_to_world = inverse(world_to_screen);
 
@@ -124,10 +120,6 @@ int main(int argc, char **argv)
 				widget_selected = true;
 				break;
 			}
-		}
-
-		for (U32 i = 0; i < edit_object_count; i++) {
-			editor_widget_set_mat44(&edit_widgets[i], world_transform[edit_nodes[i]]);
 		}
 
 		if (!ImGui::GetIO().WantCaptureMouse && !widget_selected) {
@@ -176,6 +168,11 @@ int main(int argc, char **argv)
 			} else {
 				world_transform[i] = node->transform;
 			}
+		}
+
+		for (U32 i = 0; i < edit_object_count; i++) {
+			editor_widget_set_mat44(&edit_widgets[i], world_transform[edit_nodes[i]]);
+			editor_widget_set_camera_pos(&edit_widgets[i], camera);
 		}
 
 		glEnable(GL_DEPTH_TEST);
