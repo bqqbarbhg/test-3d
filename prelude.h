@@ -19,9 +19,6 @@ typedef int64_t I64;
 typedef uint64_t U64;
 #define Count(array) (sizeof(array)/sizeof(*(array)))
 
-#define min(a, b) ((a) < (b) ? (a) : (b))
-#define max(a, b) ((a) > (b) ? (a) : (b))
-
 #define KB(amount) ((amount) * 1024)
 #define MB(amount) (KB(amount) * 1024)
 
