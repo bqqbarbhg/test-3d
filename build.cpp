@@ -2,6 +2,8 @@
 #include "intrinsics.h"
 
 #if defined(_WIN32)
+	#define GLEW_STATIC
+	#include <GL/glew.h>
 	#define NOMINMAX
 	#include <Windows.h>
 	#include <windef.h>
@@ -24,5 +26,6 @@
 #include "debug_draw.cpp"
 #include "editor_widget.cpp"
 #include "model.cpp"
+#include "opengl.cpp"
 #include "main.cpp"
 

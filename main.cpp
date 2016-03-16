@@ -17,10 +17,20 @@ int main(int argc, char **argv)
 	}
 
 	glfwMakeContextCurrent(window);
-
+	glewInit();
 	ImGui_ImplGlfw_Init(window, true);
 
+	generate_shaders();
+
 	Model_File_Data *model = load_model_file(argv[1], 0);
+	GL_Skinned_Mesh gl_mesh;
+
+	if (!make_skinned_mesh(&gl_mesh, &model->meshes[0])) {
+		return 1;
+	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 	Vec3 *temp_transform_buffer = (Vec3*)malloc(sizeof(Vec3) * 1024 * 32);
 
