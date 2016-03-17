@@ -10,23 +10,50 @@ int main(int argc, char **argv)
 		return 1;
 
 	glfwWindowHint(GLFW_SAMPLES, 4);
+
 	window = glfwCreateWindow(640, 480, "Forest of sausages", NULL, NULL);
 	if (!window) {
+		fprintf(stderr, "Could not create window\n");
 		glfwTerminate();
 		return 2;
 	}
 
 	glfwMakeContextCurrent(window);
+
+#ifdef _WIN32
 	glewInit();
+#endif
+
 	ImGui_ImplGlfw_Init(window, true);
 
-	generate_shaders();
+	if (!generate_shaders()) {
+		return 1;
+	}
 
 	Model_File_Data *model = load_model_file(argv[1], 0);
 	GL_Skinned_Mesh gl_mesh;
 
-	if (!make_skinned_mesh(&gl_mesh, &model->meshes[0])) {
-		return 1;
+	int bone_mapping[64];
+	Mat44 bone_inv[64];
+
+	{
+		Mesh *mesh = &model->meshes[0];
+
+		for (U32 boneI = 0; boneI < mesh->bone_count; boneI++) {
+			Bone *bone = &mesh->bones[boneI];
+
+			for (U32 i = 0; i < model->node_count; i++) {
+				if (!strcmp(bone->name, model->nodes[i].name)) {
+					bone_mapping[boneI] = i;
+					break;
+				}
+			}
+			bone_inv[boneI] = bone->inv_bind_pose_transform;
+		}
+
+		if (!make_skinned_mesh(&gl_mesh, mesh)) {
+			return 1;
+		}
 	}
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -201,63 +228,27 @@ int main(int argc, char **argv)
 		glMatrixMode(GL_MODELVIEW);
 		glLoadMatrixf(viewt.data);
 
-		U32 node_count = model->node_count;
-		for (U32 nodeI = 0; nodeI < node_count; nodeI++) {
-			Node *node = &model->nodes[nodeI];
-
-			const Mat44 &transform = world_transform[nodeI];
-
-			U32 mesh_count = node->mesh_count;
-			for (U32 meshI = 0; meshI < mesh_count; meshI++) {
-				Mesh *mesh = node->meshes[meshI];
-
-				U32 bone_count = mesh->bone_count;
-				for (U32 boneI = 0; boneI < bone_count; boneI++) {
-					Bone *bone = &mesh->bones[boneI];
-					Mat44 *bonetrans = 0;
-
-					for (U32 i = 0; i < node_count; i++) {
-						if (!strcmp(bone->name, model->nodes[i].name)) {
-							bonetrans = &world_transform[i];
-							break;
-						}
-					}
-
-					assert(bonetrans);
-
-					bone_transform[boneI] = bone->inv_bind_pose_transform * *bonetrans;
-				}
-
-				U32 vertex_count = mesh->vertex_count;
-				U32 bones_per_vertex = mesh->bones_per_vertex;
-				for (U32 vertexI = 0; vertexI < vertex_count; vertexI++) {
-					U8 *bone_indices = &mesh->bone_indices[vertexI * bones_per_vertex];
-					float *bone_weights = &mesh->bone_weights[vertexI * bones_per_vertex];
-
-					Vec3 vertex = mesh->positions[vertexI];
-					Vec3 result = vec3_zero;
-
-					for (U32 i = 0; i < bones_per_vertex; i++) {
-						result += (vertex * bone_transform[bone_indices[i]]) * bone_weights[i];
-					}
-
-					temp_transform_buffer[vertexI] = result;
-				}
-
-				static bool do_mesh_draw = true;
-				ImGui::Checkbox("Draw mesh", &do_mesh_draw);
-
-				if (do_mesh_draw) {
-					glBegin(GL_TRIANGLES);
-					U32 index_count = mesh->index_count;
-					for (U32 i = 0; i < index_count; i++) {
-						Vec3 pos = temp_transform_buffer[mesh->indices[i]];
-						glVertex3f(pos.x, pos.y, pos.z);
-					}
-					glEnd();
-				}
-			}
+		static bool do_wireframe = false;
+		ImGui::Checkbox("Wireframe", &do_wireframe);
+		if (do_wireframe) {
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		}
+
+		{
+			Mat44 bone_trans[64];
+			Mat44 vp = transpose(view * proj);
+
+			for (U32 i = 0; i < gl_mesh.bone_count; i++) {
+				const Mat44 &world = world_transform[bone_mapping[i]];
+				bone_trans[i] = transpose(bone_inv[i] * world);
+			}
+			draw_skinned_mesh(&gl_mesh, vp, bone_trans);
+		}
+
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		glUseProgram(0);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 		glClear(GL_DEPTH_BUFFER_BIT);
 
