@@ -135,134 +135,95 @@ bool generate_shaders()
 	return true;
 }
 
+const U32 skinned_vertex_size = 3 + 3 + 2 + 1 + 1;
+
 struct GL_Skinned_Mesh
 {
 	GLuint vertex_buffer, index_buffer;
-	GLint index_type;
-	U32 bone_count;
-	U32 weight_count;
+	void *vertices, *indices;
 
 	U32 vertex_count;
 	U32 index_count;
+
+	GLint index_type;
+	U32 bone_count;
+	U32 weight_count;
 };
 
-const U32 skinned_vertex_size = 3 + 3 + 2 + 1 + 1;
-
-bool make_skinned_mesh(GL_Skinned_Mesh *gl_mesh, Mesh *mesh)
+int gl_type_size(GLint type)
 {
-	// TODO: Sorting by bones etc. Should be done in processing?
-
-	glGenBuffers(1, &gl_mesh->vertex_buffer);
-	glGenBuffers(1, &gl_mesh->index_buffer);
-
-	U32 vertex_size = skinned_vertex_size;
-	U32 weight_count = mesh->bones_per_vertex;
-
-	U32 vertex_count = mesh->vertex_count;
-	gl_mesh->bone_count = mesh->bone_count;
-	gl_mesh->weight_count = weight_count;
-	gl_mesh->vertex_count = vertex_count;
-
-	float *vertex_data = (float*)malloc(vertex_count * vertex_size * sizeof(float));
-
-	for (U32 i = 0; i < vertex_count; i++) {
-		float *f32 = &vertex_data[i * vertex_size];
-
-		Vec3 *v = &mesh->positions[i];
-		f32[0] = v->x;
-		f32[1] = v->y;
-		f32[2] = v->z;
-
-		Vec3 *n = &mesh->normals[i];
-		f32[3] = n->x;
-		f32[4] = n->y;
-		f32[5] = n->z;
-
-		// FIXME: Support multiple texcoords (and don't expect them!)
-#if 0
-		float *t = &mesh->texcoords[0][i * mesh->texcoord_components[0]];
-		f32[6] = t[0];
-		f32[7] = t[1];
-#endif
-
-		unsigned char *bones = (unsigned char *)&f32[8];
-		unsigned char *weights = (unsigned char *)&f32[9];
-		if (weight_count == 1) {
-			bones[0] = mesh->bone_indices[i * weight_count + 0];
-			bones[1] = 0;
-			bones[2] = 0;
-			bones[3] = 0;
-			weights[0] = 255;
-			weights[1] = 0;
-			weights[2] = 0;
-			weights[3] = 0;
-		} else if (weight_count == 2) {
-			bones[0] = mesh->bone_indices[i * weight_count + 0];
-			bones[1] = mesh->bone_indices[i * weight_count + 1];
-			bones[2] = 0;
-			bones[3] = 0;
-			weights[0] = (U8)(mesh->bone_weights[i * weight_count + 0] * 255.0f + 0.5f);
-			weights[1] = (U8)(mesh->bone_weights[i * weight_count + 1] * 255.0f + 0.5f);
-			weights[2] = 0;
-			weights[3] = 0;
-		} else if (weight_count == 3) {
-			bones[0] = mesh->bone_indices[i * weight_count + 0];
-			bones[1] = mesh->bone_indices[i * weight_count + 1];
-			bones[2] = mesh->bone_indices[i * weight_count + 2];
-			bones[3] = 0;
-			weights[0] = (U8)(mesh->bone_weights[i * weight_count + 0] * 255.0f + 0.5f);
-			weights[1] = (U8)(mesh->bone_weights[i * weight_count + 1] * 255.0f + 0.5f);
-			weights[2] = (U8)(mesh->bone_weights[i * weight_count + 2] * 255.0f + 0.5f);
-			weights[3] = 0;
-		} else if (weight_count == 4) {
-			bones[0] = mesh->bone_indices[i * weight_count + 0];
-			bones[1] = mesh->bone_indices[i * weight_count + 1];
-			bones[2] = mesh->bone_indices[i * weight_count + 2];
-			bones[3] = mesh->bone_indices[i * weight_count + 3];
-			weights[0] = (U8)(mesh->bone_weights[i * weight_count + 0] * 255.0f + 0.5f);
-			weights[1] = (U8)(mesh->bone_weights[i * weight_count + 1] * 255.0f + 0.5f);
-			weights[2] = (U8)(mesh->bone_weights[i * weight_count + 2] * 255.0f + 0.5f);
-			weights[3] = (U8)(mesh->bone_weights[i * weight_count + 3] * 255.0f + 0.5f);
-		} else {
-			assert(0 && "Unexpected weight count");
-		}
+	switch (type) {
+		case GL_BYTE:
+		case GL_UNSIGNED_BYTE:
+			return 1;
+		case GL_SHORT:
+		case GL_UNSIGNED_SHORT:
+			return 2;
+		case GL_INT:
+		case GL_UNSIGNED_INT:
+			return 4;
+		default:
+			assert(0 && "Unexpected type");
+			return 0;
 	}
-	glBindBuffer(GL_ARRAY_BUFFER, gl_mesh->vertex_buffer);
-	glBufferData(GL_ARRAY_BUFFER, vertex_count * vertex_size * sizeof(float), vertex_data, GL_STATIC_DRAW);
+}
 
-	free(vertex_data);
+void do_load_skinned_mesh_to_gl(GL_Skinned_Mesh *mesh)
+{
+	assert(mesh->vertices != 0);
+	assert(mesh->indices != 0);
+	assert(mesh->vertex_buffer == 0);
+	assert(mesh->index_buffer == 0);
 
-	U32 index_count = mesh->index_count;
-	gl_mesh->index_count = index_count;
+	glGenBuffers(1, &mesh->vertex_buffer);
+	glGenBuffers(1, &mesh->index_buffer);
 
-	U32 *wide_indices = mesh->indices;
+	glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->index_buffer);
 
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_mesh->index_buffer);
-	if (vertex_count < 1 << 8) {
-		gl_mesh->index_type = GL_UNSIGNED_BYTE;
+	GLsizei vertex_size = sizeof(float) * skinned_vertex_size * mesh->vertex_count;
+	glBufferData(GL_ARRAY_BUFFER, vertex_size, mesh->vertices, GL_STATIC_DRAW);
+	GLsizei index_size = gl_type_size(mesh->index_type) * mesh->index_count;
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_size, mesh->indices, GL_STATIC_DRAW);
+}
 
-		GLubyte *indices = (GLubyte*)malloc(index_count * sizeof(GLubyte));
-		for (U32 i = 0; i < index_count; i++) {
-			indices[i] = (GLubyte)wide_indices[i];
-		}
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_count * sizeof(GLubyte), indices, GL_STATIC_DRAW);
-		free(indices);
-	} else if (mesh->vertex_count < 1 << 16) {
-		gl_mesh->index_type = GL_UNSIGNED_SHORT;
+void load_skinned_mesh_to_gl(GL_Skinned_Mesh *mesh)
+{
+	do_load_skinned_mesh_to_gl(mesh);
 
-		GLushort *indices = (GLushort*)malloc(index_count * sizeof(GLushort));
-		for (U32 i = 0; i < index_count; i++) {
-			indices[i] = (GLushort)wide_indices[i];
-		}
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_count * sizeof(GLushort), indices, GL_STATIC_DRAW);
-		free(indices);
-	} else {
-		gl_mesh->index_type = GL_UNSIGNED_INT;
-		
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_count * sizeof(GLuint), wide_indices, GL_STATIC_DRAW);
-	}
+	free(mesh->vertices);
+	free(mesh->indices);
 
-	return true;
+	mesh->vertices = 0;
+	mesh->indices = 0;
+}
+
+void write_skinned_mesh(Out_Stream *s, GL_Skinned_Mesh *mesh)
+{
+	stream_write(s, &mesh->vertex_count, sizeof(U32));
+	stream_write(s, &mesh->index_count, sizeof(U32));
+	stream_write(s, &mesh->index_type, sizeof(GLint));
+	stream_write(s, &mesh->bone_count, sizeof(U32));
+	stream_write(s, &mesh->weight_count, sizeof(U32));
+	stream_write(s, mesh->vertices, skinned_vertex_size * sizeof(float), mesh->vertex_count);
+	stream_write(s, mesh->indices, gl_type_size(mesh->index_type), mesh->index_count);
+}
+
+void read_skinned_mesh_to_gl(In_Stream *s, GL_Skinned_Mesh *mesh)
+{
+	stream_read(s, &mesh->vertex_count, sizeof(U32));
+	stream_read(s, &mesh->index_count, sizeof(U32));
+	stream_read(s, &mesh->index_type, sizeof(GLint));
+	stream_read(s, &mesh->bone_count, sizeof(U32));
+	stream_read(s, &mesh->weight_count, sizeof(U32));
+
+	mesh->vertices = stream_skip(s, skinned_vertex_size * sizeof(float), mesh->vertex_count);
+	mesh->indices = stream_skip(s, gl_type_size(mesh->index_type), mesh->index_count);
+
+	do_load_skinned_mesh_to_gl(mesh);
+
+	mesh->vertices = 0;
+	mesh->indices = 0;
 }
 
 void draw_skinned_mesh(GL_Skinned_Mesh *mesh, const Mat44& viewProjection, const Mat44 *transforms)

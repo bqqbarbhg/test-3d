@@ -26,6 +26,8 @@
 #include "debug_draw.cpp"
 #include "editor_widget.cpp"
 #include "model.cpp"
+#include "streams.cpp"
 #include "opengl.cpp"
-#include "main.cpp"
+#include "opengl_processing.cpp"
+#include "editor_main.cpp"
 

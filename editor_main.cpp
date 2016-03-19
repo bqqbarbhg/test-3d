@@ -31,10 +31,23 @@ int main(int argc, char **argv)
 	}
 
 	Model_File_Data *model = load_model_file(argv[1], 0);
-	GL_Skinned_Mesh gl_mesh;
+	GL_Skinned_Mesh gl_mesh = { 0 };
+
+	Mat44 *world_transform = (Mat44*)malloc(sizeof(Mat44) * model->node_count);
+
+	for (U32 i = 0; i < model->node_count; i++) {
+		Node *node = &model->nodes[i];
+
+		if (node->parent) {
+			world_transform[i] = node->transform * world_transform[node->parent - model->nodes];
+		} else {
+			world_transform[i] = node->transform;
+		}
+	}
 
 	int bone_mapping[64];
 	Mat44 bone_inv[64];
+	Mat44 bones[64];
 
 	{
 		Mesh *mesh = &model->meshes[0];
@@ -45,6 +58,7 @@ int main(int argc, char **argv)
 			for (U32 i = 0; i < model->node_count; i++) {
 				if (!strcmp(bone->name, model->nodes[i].name)) {
 					bone_mapping[boneI] = i;
+					bones[boneI] = world_transform[i];
 					break;
 				}
 			}
@@ -54,15 +68,27 @@ int main(int argc, char **argv)
 		if (!make_skinned_mesh(&gl_mesh, mesh)) {
 			return 1;
 		}
+
+		Out_Stream outs = { 0 };
+
+		stream_write(&outs, &mesh->bone_count, sizeof(U32));
+		stream_write(&outs, bone_inv, sizeof(Mat44), mesh->bone_count);
+		stream_write(&outs, bones, sizeof(Mat44), mesh->bone_count);
+		write_skinned_mesh(&outs, &gl_mesh);
+
+		FILE *f = fopen("bin/out.bin", "wb");
+		fwrite(outs.data, 1, outs.size, f);
+		fclose(f);
+
+		stream_free(&outs);
+
+		load_skinned_mesh_to_gl(&gl_mesh);
 	}
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 	Vec3 *temp_transform_buffer = (Vec3*)malloc(sizeof(Vec3) * 1024 * 32);
-
-	Mat44 *world_transform = (Mat44*)malloc(sizeof(Mat44) * model->node_count);
-	Mat44 *bone_transform = (Mat44*)malloc(sizeof(Mat44) * 256);
 
 	float yaw = 0.0f;
 	float pitch = 0.0f;
